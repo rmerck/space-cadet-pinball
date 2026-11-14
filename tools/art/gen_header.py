@@ -55,7 +55,20 @@ def text():
               "inline constexpr float kBallSpriteUnits = %.1fF;    // ball.png covers this; the disc is two ball radii" % P.BALL_SPRITE_UNITS,
               "inline constexpr float kBallShadowOffsetX = %.1fF;" % P.BALL_SHADOW_OFFSET[0],
               "inline constexpr float kBallShadowOffsetY = %.1fF;" % P.BALL_SHADOW_OFFSET[1],
-              "inline constexpr float kBallShadowAlpha = %.2fF;" % P.BALL_SHADOW_ALPHA, "", "}  // namespace pinball::art", ""]
+              "inline constexpr float kBallShadowAlpha = %.2fF;" % P.BALL_SHADOW_ALPHA, ""]
+    lines += ["// Light show: lit lamps in the neon of their colour, LampId order, with the lens level for each.",
+              "inline constexpr std::array<Rgb, %d> kLampNeon{{" % len(P.LAMPS)]
+    for name, col in P.LAMPS:
+        lines.append("    %s,  // %s" % (rgb(P.NEON[col]), name))
+    lines += ["}};", "inline constexpr std::array<float, %d> kLampNeonLevels{{" % len(P.LAMPS),
+              "    " + ", ".join("%.2fF" % P.neon_level(P.NEON[col]) for _, col in P.LAMPS), "}};", ""]
+    for key, col in P.FX.items():
+        lines.append("inline constexpr Rgb kFx%s%s;" % ("".join(w.capitalize() for w in key.split("_")), rgb(col)))
+    lines += ["inline constexpr float kNeonGlowStrength = %.2fF;" % P.GLOW_STRENGTH_NEON,
+              "inline constexpr float kFlasherStrengthMax = %.2fF;" % P.FLASHER_STRENGTH_MAX,
+              "inline constexpr float kGiStrength = %.2fF;" % P.GI_STRENGTH,
+              "inline constexpr float kFlareUnits = %.1fF;    // flare.png and ring.png at scale 1" % P.FLARE_UNITS,
+              "", "}  // namespace pinball::art", ""]
     return "\n".join(lines)
 
 

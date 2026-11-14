@@ -395,6 +395,40 @@ TexturePtr makePlayfieldTexture(SDL_Renderer* r) {
   return texture;
 }
 
+// The lamps of a light show: each insert at its level in the neon of its
+// colour, a halo, and a hot core.
+void drawLitLamps(SDL_Renderer* r, SDL_Texture* arrow, SDL_Texture* round, TableEffects& effects,
+                  const LightShow& show, std::span<const LampSprite> sprites) {
+  for (std::size_t i = 0; i < sprites.size(); ++i) {
+    const float level = show.lampLevel(table::kLamps[i].id);
+    if (level < 0.01F) {
+      continue;
+    }
+    SDL_Texture* const insert = sprites[i].arrow ? arrow : round;
+    setTint(insert, art::kLampNeon[i], art::kLampNeonLevels[i]);
+    SDL_SetTextureAlphaMod(insert, toByte(level * 1.15F));
+    SDL_RenderTextureRotated(r, insert, nullptr, &sprites[i].insert.dst,
+                             sprites[i].insert.angleDegrees, nullptr, SDL_FLIP_NONE);
+  }
+  SDL_SetTextureAlphaMod(arrow, SDL_ALPHA_OPAQUE);
+  SDL_SetTextureAlphaMod(round, SDL_ALPHA_OPAQUE);
+  for (std::size_t i = 0; i < sprites.size(); ++i) {
+    const float level = show.lampLevel(table::kLamps[i].id);
+    if (level < 0.3F) {
+      continue;  // A glimmer is the lens alone.
+    }
+    const Vec2 at = table::kLamps[i].position;
+    const art::Rgb neon = art::kLampNeon[i];
+    // The halo and the core grow faster than the lens: a glimmer has next to
+    // none, a lit lamp all of it.
+    const float lit = level * std::sqrt(level);
+    effects.addGlow(r, at, sprites[i].glowRadius * 1.45F, neon, art::kNeonGlowStrength * lit);
+    effects.addGlow(r, at, sprites[i].glowRadius * 0.45F, mixRgb(neon, art::kFxWhite, 0.55F),
+                    0.40F * lit);
+  }
+  effects.endLayer(r);
+}
+
 }  // namespace
 
 std::unique_ptr<TableRenderer> TableRenderer::create(SDL_Renderer* renderer,
@@ -434,6 +468,8 @@ std::unique_ptr<TableRenderer> TableRenderer::create(SDL_Renderer* renderer,
   t.bumper = required("sprites/bumper.png");
   t.bumperCap = required("sprites/bumper_cap.png");
   t.glow = required("sprites/glow.png");
+  t.flare = required("sprites/flare.png");
+  t.ring = required("sprites/ring.png");
   t.bar = required("sprites/bar.png");
   t.door = required("sprites/door.png");
   t.plunger = required("sprites/plunger.png");
@@ -472,10 +508,16 @@ std::unique_ptr<TableRenderer> TableRenderer::create(SDL_Renderer* renderer,
   // The glow is additive everywhere except the balls' shadows, which switch
   // it for one draw and switch it back.
   SDL_SetTextureBlendMode(t.glow.get(), SDL_BLENDMODE_ADD);
+  SDL_SetTextureBlendMode(t.flare.get(), SDL_BLENDMODE_ADD);
+  SDL_SetTextureBlendMode(t.ring.get(), SDL_BLENDMODE_ADD);
   return std::unique_ptr<TableRenderer>(new TableRenderer(std::move(t)));
 }
 
-TableRenderer::TableRenderer(Textures textures) : textures_(std::move(textures)) {}
+TableRenderer::TableRenderer(Textures textures) : textures_(std::move(textures)) {
+  effects_.setTextures({.glow = textures_.glow.get(),
+                        .flare = textures_.flare.get(),
+                        .ring = textures_.ring.get()});
+}
 
 OverlayArt TableRenderer::overlayArt() const noexcept {
   return {.dialog = textures_.dialog.get(),
@@ -496,9 +538,13 @@ void TableRenderer::drawGlow(SDL_Renderer* r, Vec2 center, float radius, art::Rg
   SDL_RenderTexture(r, glow, nullptr, &dst);
 }
 
-void TableRenderer::drawBumpers(SDL_Renderer* r, const Game& game) const {
+void TableRenderer::drawBumpers(SDL_Renderer* r, const Game& game, const LightShow* show) const {
   SDL_Texture* const body = textures_.bumper.get();
   SDL_Texture* const cap = textures_.bumperCap.get();
+  if (show != nullptr) {
+    drawLitBumpers(r, game, *show);
+    return;
+  }
   for (std::size_t i = 0; i < table::kBumpers.size(); ++i) {
     const table::Bumper& bumper = table::kBumpers[i];
     const float flash = std::clamp(game.bumperFlash(i), 0.0F, 1.0F);
@@ -515,8 +561,14 @@ void TableRenderer::drawBumpers(SDL_Renderer* r, const Game& game) const {
   }
 }
 
-void TableRenderer::drawLamps(SDL_Renderer* r, const TableLights& lights) const {
+void TableRenderer::drawLamps(SDL_Renderer* r, const TableLights& lights,
+                              const LightShow* show) const {
   static const std::array<LampSprite, table::kLamps.size()> kSprites = makeLampSprites();
+  if (show != nullptr) {
+    drawLitLamps(r, textures_.insertArrow.get(), textures_.insertRound.get(), effects_, *show,
+                 kSprites);
+    return;
+  }
   // Inserts first, then every glow, so a glow is never cut by the next lamp.
   for (std::size_t i = 0; i < kSprites.size(); ++i) {
     if (!lights.lamps[i]) {
@@ -606,13 +658,87 @@ void TableRenderer::drawTargets(SDL_Renderer* r, const Game& game,
   }
 }
 
-void TableRenderer::drawSlingshotFlashes(SDL_Renderer* r, const Game& game) const {
+void TableRenderer::drawSlingshotFlashes(SDL_Renderer* r, const Game& game,
+                                         const LightShow* show) const {
+  if (show != nullptr) {
+    drawLitSlingshots(r, game, *show);
+    return;
+  }
   for (std::size_t i = 0; i < table::kSlingshots.size(); ++i) {
     // On the middle of the kicking face.
     const table::Triangle& sling = table::kSlingshots[i];
     drawGlow(r, (sling.points[0] + sling.points[2]) * 0.5F, 60.0F, art::kPink,
              game.slingshotFlash(i) * art::kMaxGlowStrength);
   }
+}
+
+void TableRenderer::drawLitBumpers(SDL_Renderer* r, const Game& game,
+                                   const LightShow& show) const {
+  SDL_Texture* const body = textures_.bumper.get();
+  SDL_Texture* const cap = textures_.bumperCap.get();
+  const float gi = show.giLevel();
+  for (std::size_t i = 0; i < table::kBumpers.size(); ++i) {
+    const table::Bumper& bumper = table::kBumpers[i];
+    const float flash = std::clamp(game.bumperFlash(i), 0.0F, 1.0F);
+    const float radius = bumper.shape.radius;
+    // Struck: the body runs through yellow to white-hot and swells; the cap
+    // pulses larger still.
+    const float scale = radius / kBumperSpriteRadius * (1.0F + 0.12F * flash);
+    const SDL_FRect dst = centred(bumper.shape.center, 64.0F * scale, 64.0F * scale);
+    const art::Rgb tint = flash < 0.5F
+                              ? blendRgb(art::kTintBumper, art::kFxYellow, flash * 2.0F)
+                              : blendRgb(art::kFxYellow, art::kFxWhite, (flash - 0.5F) * 1.2F);
+    setTint(body, tint, 1.0F);
+    SDL_RenderTexture(r, body, nullptr, &dst);
+    const float capScale = radius / kBumperSpriteRadius * (1.0F + 0.18F * flash);
+    const SDL_FRect capDst = centred(bumper.shape.center, 64.0F * capScale, 64.0F * capScale);
+    SDL_RenderTexture(r, cap, nullptr, &capDst);
+  }
+  for (std::size_t i = 0; i < table::kBumpers.size(); ++i) {
+    const table::Bumper& bumper = table::kBumpers[i];
+    const float flash = std::clamp(game.bumperFlash(i), 0.0F, 1.0F);
+    const float radius = bumper.shape.radius;
+    // A real machine's bumper lamps are always on: a steady warm light that
+    // follows the general illumination, then the strike over it.
+    effects_.addGlow(r, bumper.shape.center, radius * 1.9F, art::kFxOrange, 0.18F * gi);
+    if (flash > 0.0F) {
+      effects_.addGlow(r, bumper.shape.center, radius * 2.8F, art::kFxYellow, 0.65F * flash);
+      effects_.addGlow(r, bumper.shape.center, radius * 0.7F, art::kFxWhite, 0.45F * flash);
+      effects_.addRing(r, bumper.shape.center, radius * (1.05F + 1.3F * (1.0F - flash)),
+                       art::kFxOrange, 0.8F * flash);
+    }
+  }
+  effects_.endLayer(r);
+}
+
+void TableRenderer::drawLitSlingshots(SDL_Renderer* r, const Game& game,
+                                      const LightShow& show) const {
+  const float gi = show.giLevel();
+  std::array<SDL_Vertex, 3 * table::kSlingshots.size()> faces{};
+  int count = 0;
+  for (std::size_t i = 0; i < table::kSlingshots.size(); ++i) {
+    const table::Triangle& sling = table::kSlingshots[i];
+    const float flash = std::clamp(game.slingshotFlash(i), 0.0F, 1.0F);
+    const Vec2 face = (sling.points[0] + sling.points[2]) * 0.5F;
+    effects_.addGlow(r, face, 46.0F, art::kFxMagenta, 0.10F * gi);
+    if (flash > 0.0F) {
+      effects_.addGlow(r, face, 72.0F, art::kFxMagenta, 0.65F * flash);
+      effects_.addGlow(r, face, 22.0F, art::kFxWhite, 0.40F * flash);
+      // The plastic over it lights up whole.
+      const art::Rgb c = art::kFxMagenta;
+      const SDL_FColor colour{static_cast<float>(c.r) / 255.0F, static_cast<float>(c.g) / 255.0F,
+                              static_cast<float>(c.b) / 255.0F, 0.45F * flash};
+      for (const Vec2 p : sling.points) {
+        faces[static_cast<std::size_t>(count++)] = {{p.x, p.y}, colour, {0.0F, 0.0F}};
+      }
+    }
+  }
+  if (count > 0) {
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_ADD);
+    SDL_RenderGeometry(r, nullptr, faces.data(), count, nullptr, 0);
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+  }
+  effects_.endLayer(r);
 }
 
 void TableRenderer::drawPlunger(SDL_Renderer* r, const Game& game) const {
@@ -806,22 +932,35 @@ void TableRenderer::draw(SDL_Renderer* r, const Game& game, float alpha,
   SDL_SetRenderClipRect(r, &clip);
 
   SDL_RenderTexture(r, textures_.background.get(), nullptr, &playfield);
+  const LightShow* const show = options.lightShow;
+  if (show != nullptr) {
+    effects_.drawUnderlay(r, *show);
+  }
   const TableLights lights = tableLights(game);
   if (textures_.backgroundFromLayout) {
     drawElements(r, game, lights);
   } else {
-    drawLamps(r, lights);
+    drawLamps(r, lights, show);
     drawSpinnerAndKickback(r, game);
   }
   drawTargets(r, game, lights);
-  drawBumpers(r, game);
-  drawSlingshotFlashes(r, game);
+  if (show != nullptr) {
+    effects_.drawElementFlashes(r, game, *show);
+  }
+  drawBumpers(r, game, show);
+  drawSlingshotFlashes(r, game, show);
   drawPlunger(r, game);
   drawFlippers(r, game, alpha, options.flippersAtRest);
   {
     // The shadows follow the same in-between positions as the balls.
     const DrawnBalls balls = ballsToDraw(game, alpha, options.extraBalls);
+    if (show != nullptr) {
+      effects_.drawShow(r, game, balls.span(), alpha, *show);
+    }
     drawBalls(r, balls.span());
+    if (show != nullptr) {
+      effects_.drawBallGlints(r, game, balls.span(), *show);
+    }
   }
 
   if (options.dimmed) {

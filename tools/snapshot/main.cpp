@@ -437,6 +437,11 @@ void drawScene(SDL_Renderer* r, const pinball::TableRenderer& table,
   preview.message = scene.message;
   preview.course = scene.state == State::Longest;
   pinball::DrawOptions options;
+  // The lights as they stand at this step (a single look: the flashes of
+  // earlier steps are not seen; tools/fxreel feeds every step).
+  pinball::LightShow lights;
+  lights.observe(game);
+  options.lightShow = &lights;
   options.dimmed = scene.state == State::Pause || scene.state == State::Interrupted ||
                    scene.state == State::Confirm;
   options.flippersAtRest = options.dimmed;

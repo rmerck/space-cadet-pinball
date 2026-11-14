@@ -107,4 +107,55 @@ inline constexpr float kBallShadowOffsetX = 4.0F;
 inline constexpr float kBallShadowOffsetY = 6.0F;
 inline constexpr float kBallShadowAlpha = 0.80F;
 
+// Light show: lit lamps in the neon of their colour, LampId order, with the lens level for each.
+inline constexpr std::array<Rgb, 29> kLampNeon{{
+    {30, 235, 255},  // ArrowCircuitLeft
+    {196, 92, 255},  // ArrowRunway
+    {255, 138, 0},  // ArrowHangar
+    {255, 234, 40},  // ArrowBriefing
+    {157, 255, 30},  // ArrowTurbine
+    {255, 46, 200},  // ArrowSkyway
+    {30, 235, 255},  // ArrowCircuitRight
+    {255, 138, 0},  // Lock1
+    {255, 138, 0},  // Lock2
+    {196, 92, 255},  // Course1
+    {196, 92, 255},  // Course2
+    {196, 92, 255},  // Course3
+    {196, 92, 255},  // Course4
+    {196, 92, 255},  // Course5
+    {196, 92, 255},  // Course6
+    {255, 234, 40},  // Graduation
+    {30, 235, 255},  // ExtraCredit
+    {255, 46, 200},  // ExtraBall
+    {255, 234, 40},  // Overdrive
+    {157, 255, 30},  // TurboCharge
+    {255, 234, 40},  // Kickback
+    {255, 242, 176},  // ShootAgain
+    {255, 242, 176},  // RollCall1
+    {255, 242, 176},  // RollCall2
+    {255, 242, 176},  // RollCall3
+    {30, 235, 255},  // WingW
+    {30, 235, 255},  // WingI
+    {30, 235, 255},  // WingN
+    {30, 235, 255},  // WingG
+}};
+inline constexpr std::array<float, 29> kLampNeonLevels{{
+    0.95F, 1.00F, 1.00F, 0.88F, 0.88F, 1.00F, 0.95F, 1.00F, 1.00F, 1.00F, 1.00F, 1.00F, 1.00F, 1.00F, 1.00F, 0.88F, 0.95F, 1.00F, 0.88F, 0.88F, 0.88F, 0.84F, 0.84F, 0.84F, 0.84F, 0.95F, 0.95F, 0.95F, 0.95F
+}};
+
+inline constexpr Rgb kFxCyan{30, 235, 255};
+inline constexpr Rgb kFxMagenta{255, 46, 200};
+inline constexpr Rgb kFxLime{157, 255, 30};
+inline constexpr Rgb kFxOrange{255, 138, 0};
+inline constexpr Rgb kFxYellow{255, 234, 40};
+inline constexpr Rgb kFxViolet{196, 92, 255};
+inline constexpr Rgb kFxWhite{255, 248, 236};
+inline constexpr Rgb kFxGi{255, 180, 92};
+inline constexpr Rgb kFxGiBulb{255, 217, 160};
+inline constexpr Rgb kFxTrail{159, 244, 255};
+inline constexpr float kNeonGlowStrength = 0.50F;
+inline constexpr float kFlasherStrengthMax = 0.70F;
+inline constexpr float kGiStrength = 0.40F;
+inline constexpr float kFlareUnits = 64.0F;    // flare.png and ring.png at scale 1
+
 }  // namespace pinball::art

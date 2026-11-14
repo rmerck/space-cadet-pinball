@@ -350,6 +350,7 @@ FrameResult App::iterate(bool restWhenStill) {
     SoundSet sounds = 0;
     for (int i = 0; i < steps; ++i) {
       game_.step(input_);
+      lightShow_.observe(game_);
       sounds |= game_.sounds();
       // Checked per step, so a game that ends and restarts within one
       // frame is still recorded.
@@ -689,10 +690,12 @@ void App::render(double alpha, bool cursorLit) {
   const bool showPaused = paused_ || autoPaused_;
   // The ball and flippers are drawn part-way between the last two steps.
   table_->drawBackdrop(r, layout_);
+  lightShow_.setReduceMotion(reduceMotion_);
   table_->draw(r, game_, static_cast<float>(alpha), layout_,
                DrawOptions{.dimmed = showPaused,
                            .reduceMotion = reduceMotion_,
-                           .flippersAtRest = showPaused},
+                           .flippersAtRest = showPaused,
+                           .lightShow = &lightShow_},
                HudExtras{highScores_.best(), newHighScore_});
   if (touch) {
     table_->drawTouchOverlay(r, layout_, touch_.view(touchContext()));

@@ -70,6 +70,26 @@ BALL_SHADOW_ALPHA = 0.80
 
 LUM_LIT_LENS = 0.42   # a lit lens is tinted no lighter than this, whatever its hue
 
+# ---- light show (owner update: a lit, living machine; src/core/LightShow.*, src/platform/TableEffects.*) ----
+# A lit lamp, a flash or a flasher is drawn in the neon of its colour: the same hue as the paint, brighter and
+# more saturated, so lit against unlit is obvious. Neon lenses may be lighter than LUM_LIT_LENS but never reach
+# the ball's LUM_BALL_MIN.
+NEON = {AQUA: "#1EEBFF", ORCHID: "#C45CFF", ORANGE: "#FF8A00", YELLOW: "#FFEA28", GREEN: "#9DFF1E", PINK: "#FF2EC8",
+        CREAM: "#FFF2B0"}
+LUM_NEON_LENS = 0.60
+# The effect colours the renderer uses for bursts, sweeps and the general illumination.
+FX = {"cyan": "#1EEBFF", "magenta": "#FF2EC8", "lime": "#9DFF1E", "orange": "#FF8A00", "yellow": "#FFEA28",
+      "violet": "#C45CFF", "white": "#FFF8EC", "gi": "#FFB45C", "gi_bulb": "#FFD9A0", "trail": "#9FF4FF"}
+GLOW_STRENGTH_NEON = 0.50      # glow.png alpha for a lit lamp at full level
+FLASHER_STRENGTH_MAX = 0.70    # strongest flasher burst (flare.png / glow.png); the ball is drawn after it, with its rim
+GI_STRENGTH = 0.40             # the warm edge light at full level
+FLARE_UNITS = 64.0             # flare.png and ring.png cover this many units at scale 1
+
+
+def neon_level(h):
+    """Colour multiplier for a lit neon lens: 1.0 unless the neon is lighter than LUM_NEON_LENS."""
+    return round(min(1.0, (LUM_NEON_LENS / _lum(h)) ** (1 / 2.2)), 2)
+
 
 def _lum(h):
     c = [int(h.lstrip("#")[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]

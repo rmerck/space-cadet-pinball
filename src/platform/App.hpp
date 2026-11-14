@@ -22,6 +22,7 @@
 #include "platform/About.hpp"
 #include "platform/AudioOutput.hpp"
 #include "platform/ScoreStore.hpp"
+#include "core/LightShow.hpp"
 #include "platform/TableRenderer.hpp"
 
 namespace pinball {
@@ -288,6 +289,11 @@ class App {
   // The player's choice. The tune also rests whenever the game is halted.
   bool musicOn_ = true;
   Game game_;
+  // The table's lights, fed every step of game_ (core/LightShow.hpp). The
+  // title screen turns its attract sequence on with
+  // lightShow_.setAttract(true); reduce motion reaches it through
+  // lightShow_.setReduceMotion (see render()).
+  LightShow lightShow_;
   // Declared before the table it loads.
   ScoreStore scoreStore_;
   // Best games on this machine, loaded at start and saved when a game ends.

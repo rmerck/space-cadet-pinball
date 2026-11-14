@@ -19,6 +19,7 @@ void runSuites() {
   testGame();
   testHighScores();
   testHoles();
+  testLightShow();
   testLaunch();
   testCourses();
   testMultiball();

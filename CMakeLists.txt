@@ -272,6 +272,7 @@ add_library(pinball_core STATIC
   src/core/Game.cpp
   src/core/HighScores.cpp
   src/core/Courses.cpp
+  src/core/LightShow.cpp
   src/core/OverlayLayout.cpp
   src/core/Physics.cpp
   src/core/PngHeader.cpp
@@ -315,6 +316,7 @@ add_library(pinball_platform STATIC
   src/platform/PauseMenu.cpp
   src/platform/SafeFile.cpp
   src/platform/ScoreStore.cpp
+  src/platform/TableEffects.cpp
   src/platform/TableRenderer.cpp
   src/platform/Text.cpp
   src/platform/TouchOverlay.cpp
@@ -556,6 +558,18 @@ if(PINBALL_BUILD_TOOLS)
     add_dependencies(pinball_snapshot pinball_assets)
   endif()
 
+  # Plays scripted scenes of the light show and writes the playfield as a
+  # run of PNGs (review GIFs, before and after, draw times).
+  add_executable(pinball_fxreel tools/fxreel/main.cpp)
+  target_link_libraries(pinball_fxreel PRIVATE pinball_platform)
+  target_include_directories(pinball_fxreel PRIVATE tests)
+  set_target_properties(pinball_fxreel PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PINBALL_BESIDE_DIR})
+  if(PINBALL_MACOS)
+    add_dependencies(pinball_fxreel pinball_tool_assets)
+  else()
+    add_dependencies(pinball_fxreel pinball_assets)
+  endif()
+
   # Prints the table geometry as JSON for the art scripts.
   add_executable(pinball_layout tools/layout_dump/main.cpp)
   target_link_libraries(pinball_layout PRIVATE pinball_core)
@@ -576,6 +590,7 @@ if(BUILD_TESTING)
     tests/GameTest.cpp
     tests/HighScoreTest.cpp
     tests/HoleTest.cpp
+    tests/LightShowTest.cpp
     tests/LaunchTest.cpp
     tests/CourseTest.cpp
     tests/MultiballTest.cpp

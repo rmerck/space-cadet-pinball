@@ -71,6 +71,45 @@ def glow():
     return Image.fromarray(out.astype(np.uint8), "RGBA")
 
 
+def flare():
+    """Additive flasher burst, white, tinted by the renderer: a hot core, a soft bloom and a four-point star
+    with fainter diagonals (the 90s lens flare, kept to flashers; never on a lamp at rest). numpy only."""
+    n = 256
+    ys, xs = np.mgrid[0:n, 0:n].astype(np.float64)
+    dx = (xs + 0.5 - n / 2) / (n / 2)
+    dy = (ys + 0.5 - n / 2) / (n / 2)
+    d = np.hypot(dx, dy)
+    core = np.clip(1 - d / 0.22, 0, 1) ** 1.6
+    bloom = np.clip(1 - d, 0, 1) ** 3.0 * 0.55
+    fade = np.clip(1 - d, 0, 1) ** 1.4
+
+    def ray(u, v, width):
+        return np.exp(-(v / width) ** 2) * fade * np.clip(1 - np.abs(u), 0, 1)
+
+    r2 = np.sqrt(0.5)
+    rays = ray(dx, dy, 0.035) + ray(dy, dx, 0.035)
+    rays += 0.45 * (ray((dx + dy) * r2, (dx - dy) * r2, 0.025) + ray((dx - dy) * r2, (dx + dy) * r2, 0.025))
+    a = np.clip(core + bloom + rays * 0.8, 0, 1)
+    out = np.empty((n, n, 4), np.float64)
+    out[..., :3] = 255
+    out[..., 3] = np.round(a * 255)
+    from PIL import Image
+    return Image.fromarray(out.astype(np.uint8), "RGBA")
+
+
+def ring():
+    """Additive shock ring for a struck bumper or a flasher's edge, white, tinted by the renderer. numpy only."""
+    n = 128
+    ys, xs = np.mgrid[0:n, 0:n].astype(np.float64)
+    d = np.hypot(xs + 0.5 - n / 2, ys + 0.5 - n / 2) / (n / 2)
+    a = np.exp(-((d - 0.78) / 0.10) ** 2) * np.clip((1 - d) / 0.08, 0, 1)
+    out = np.empty((n, n, 4), np.float64)
+    out[..., :3] = 255
+    out[..., 3] = np.round(np.clip(a, 0, 1) * 255)
+    from PIL import Image
+    return Image.fromarray(out.astype(np.uint8), "RGBA")
+
+
 def flipper():
     m = 9.0
     w = 2 * m + FLIP["baseRadius"] + FLIP["length"] + FLIP["tipRadius"]
@@ -321,6 +360,7 @@ SPRITES = {
     "bumper_cap.png": lambda: bumper("cap"), "bar.png": bar, "plunger.png": plunger, "button.png": button, "button_gloss.png": button_gloss,
     "insert_round.png": lambda: insert("round"), "insert_arrow.png": lambda: insert("arrow"), "door.png": door,
     "spinner_0.png": lambda: spinner(0), "spinner_1.png": lambda: spinner(1), "kickback.png": kickback,
+    "flare.png": flare, "ring.png": ring,
 }
 
 

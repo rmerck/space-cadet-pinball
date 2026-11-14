@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "core/Game.hpp"
+#include "core/LightShow.hpp"
 #include "core/Rules.hpp"
 #include "core/TableLayout.hpp"
 
@@ -32,8 +33,9 @@ struct TableLights {
 };
 
 // Blinking lamps, in steps of the game's clock: on for half of each period.
-inline constexpr std::uint64_t kBlinkSteps = 60;      // Twice a second.
-inline constexpr std::uint64_t kFastBlinkSteps = 24;  // Five times a second.
+// The same clock as the light show (core/LightShow.hpp).
+inline constexpr std::uint64_t kBlinkSteps = fx::kBlinkSteps;          // Twice a second.
+inline constexpr std::uint64_t kFastBlinkSteps = fx::kFastBlinkSteps;  // Five times a second.
 
 // Whether a lamp in this state is lit at this step of the game.
 [[nodiscard]] constexpr bool lampLit(LampState state, std::uint64_t step) noexcept {
